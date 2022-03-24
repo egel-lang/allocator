@@ -13,10 +13,10 @@ typedef enum vm_tag_t {
 
 typedef vm_tagbits_t unsigned int;
 
-const VM_TAG_BITS   3;
-const VM_TAG_MASK   (1<<(VM_TAG_BITS+1))-1;
-const VM_RC_ONE     (1<<(VM_TAG_BITS+1));
-const VM_RC_MASK    ~VM_TAG_MASK;
+const VM_TAG_BITS   = 3;
+const VM_TAG_MASK   = (1<<(VM_TAG_BITS+1))-1;
+const VM_RC_ONE     = 1<<VM_TAG_BITS;
+const VM_RC_MASK    = ~VM_TAG_MASK;
 
 inline vm_tag_t vm_tagbits_tag(const vm_tagbits_t bb) {
     return (vm_tag_t) (bb & VM_TAG_MASK);
@@ -64,3 +64,5 @@ inline void vm_header_dec(const vm_header_tm* p) {
     }
 };
 
+typedef struct vm_integer_t {
+};
