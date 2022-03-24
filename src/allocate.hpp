@@ -34,19 +34,19 @@ inline vm_tagbits_t vm_tagbits_dec(const vm_tagbits_t bb) {
     return bb-VM_RC_ONE;
 };
 
-typedef struct vm_header_tm {
+typedef struct vm_header_t {
     vm_tagbits_t    tagbits;
 };
 
-inline vm_tag_t vm_header_tag(const vm_header_tm* p) {
+inline vm_tag_t vm_header_tag(const vm_header_t* p) {
     return vm_tagbits_tag(p->tagbits);
 };
 
-inline vm_tag_t vm_header_rc(const vm_header_tm* p) {
+inline vm_tag_t vm_header_rc(const vm_header_t* p) {
     return vm_tagbits_rc(p->tagbits);
 };
 
-inline void vm_header_inc(const vm_header_tm* p) {
+inline void vm_header_inc(const vm_header_t* p) {
     bool updated = false;
     while (!updated) {
         auto bb0 = p->tagbits;
@@ -55,7 +55,7 @@ inline void vm_header_inc(const vm_header_tm* p) {
     }
 };
 
-inline void vm_header_dec(const vm_header_tm* p) {
+inline void vm_header_dec(const vm_header_t* p) {
     bool updated = false;
     while (!updated) {
         auto bb0 = p->tagbits;
