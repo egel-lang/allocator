@@ -34,8 +34,9 @@ inline vm_tagbits_t vm_tagbits_dec(const vm_tagbits_t bb) {
     return bb-VM_RC_ONE;
 };
 
-struct vm_base_t {
+union vm_base_t {
     vm_tagbits_t    tagbits;
+    vm_base_t*      next;
 };
 
 inline vm_tag_t vm_base_tag(const vm_base_t* p) {
@@ -55,23 +56,28 @@ inline void vm_base_inc(const vm_base_t* p) {
     }
 };
 
+inline void vm_base_free(const vm_base_t* p);
+
 inline void vm_base_dec(const vm_base_t* p) {
     bool updated = false;
-    while (!updated) {
+    while (!updated) { // an update may fail
         auto bb0 = p->tagbits;
         auto bb1 = vm_tagbits_dec(bb0);
         updated = std::atomic_compare_exchange_weak(&p->tagbits, bb0, bb1);
+        if (updated && (vm_tagbits_rc(bb1) == 0)) { // only one thread should free
+            vm_base_free(p);
+        }
     }
 };
 
 struct vm_integer_t {
-    vm_tagbit_t     tagbits;
+    vm_base_t       base;
     int             value;
 };
 
 inline vm_base_t* vm_integer_create(int v) {
     auto p = (vm_integer_t*) malloc(size_of(vm_integer_t));
-    p->tagbits = VM_RC_ONE | VM_INT_TAG;
+    p->base.tagbits = VM_RC_ONE | VM_INT_TAG;
     p->value   = v;
 };
 
@@ -84,13 +90,13 @@ inline int vm_integer_value(const vm_base_t* p) {
 };
 
 struct vm_float_t {
-    vm_tagbit_t     tagbits;
+    vm_base_t       base;
     float           value;
 };
 
 inline vm_base_t* vm_float_create(float v) {
     auto p = (vm_float_t*) malloc(size_of(vm_float_t));
-    p->tagbits = VM_RC_ONE | VM_FLOAT_TAG;
+    p->base.tagbits = VM_RC_ONE | VM_FLOAT_TAG;
     p->value   = v;
 };
 
@@ -103,13 +109,13 @@ inline float vm_float_value(const vm_base_t* p) {
 };
 
 struct vm_char_t {
-    vm_tagbit_t     tagbits;
+    vm_base_t       base;
     float           value;
 };
 
 inline vm_base_t* vm_char_create(char v) {
     auto p = (vm_char_t*) malloc(size_of(vm_char_t));
-    p->tagbits = VM_RC_ONE | VM_CHAR_TAG;
+    p->base.tagbits = VM_RC_ONE | VM_CHAR_TAG;
     p->value   = v;
 };
 
@@ -122,13 +128,13 @@ inline char vm_char_value(const vm_base_t* p) {
 };
 
 struct vm_text_t {
-    vm_tagbit_t     tagbits;
+    vm_base_t       base;
     void*           value;
 };
 
 inline vm_base_t* vm_text_create(void* v) {
     auto p = (vm_text_t*) malloc(size_of(vm_text_t));
-    p->tagbits = VM_RC_ONE | VM_TEXT_TAG;
+    p->base.tagbits = VM_RC_ONE | VM_TEXT_TAG;
     p->value   = v;
 };
 
@@ -141,13 +147,13 @@ inline void* vm_text_value(const vm_base_t* p) {
 };
 
 struct vm_combinator_t {
-    vm_tagbit_t     tagbits;
+    vm_base_t       base;
     void*           value;
 };
 
 inline vm_base_t* vm_combinator_create(void* v) {
     auto p = (vm_combinator_t*) malloc(size_of(vm_combinator_t));
-    p->tagbits = VM_RC_ONE | VM_COMBINATOR_TAG;
+    p->base.tagbits = VM_RC_ONE | VM_COMBINATOR_TAG;
     p->value   = v;
 };
 
@@ -160,14 +166,14 @@ inline void* vm_combinator_value(const vm_base_t* p) {
 };
 
 struct vm_array_t {
-    vm_tagbit_t     tagbits;
+    vm_base_t       base;
     int             size;
     vm_base_t[]     value;
 };
 
 inline vm_base_t* vm_array_create(int sz) {
     auto p = (vm_combinator_t*) malloc(size_of(vm_combinator_t));
-    p->tagbits = VM_RC_ONE | VM_ARRAY_TAG;
+    p->base.tagbits = VM_RC_ONE | VM_ARRAY_TAG;
     p->size    = sz;
     for (int n = 0; n < sz; n++) {
         p->value[n] = nullptr;
@@ -178,6 +184,10 @@ inline bool vm_is_array(const vm_base_t* p) {
     return vm_base_tag(p) == VM_ARRAY_TAG;
 };
 
+inline int vm_array_size(const vm_base_t* p) {
+    return ((vm_array_t*) p)->size;
+};
+
 inline vm_base_t* vm_array_get(const vm_base_t* p, int n) {
     return ((vm_array_t*) p)->value[n];
 };
@@ -186,4 +196,26 @@ inline void vm_array_set(const vm_base_t* p, int n, const vm_base_t* v) {
     ((vm_array_t*) p)->value[n] = v;
 };
 
+struct vm_list {
+    vm_list*    next;
+};
+
+inline void vm_list_append(const vm_base_t* p, const vm_list* ll) {
+    auto ll0 = (vm_list*) p;
+    ll0->next = 
+    return ((vm_list*) p)->next = 
+};
+
+inline void vm_array_free(const vm_base_t* p) {
+    
+};
+
+inline void vm_base_free(const vm_base_t* p) {
+    auto t = vm_base_tag(p);
+    if (t != VM_ARRAY_TAG) {
+        free(p);
+    } else {
+        vm_array_free(p);
+    }
+};
 
