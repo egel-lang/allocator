@@ -2,13 +2,26 @@
 
 #include <atomic>
 
+// tag and tagbits
+
 typedef enum vm_tag_t {
     VM_INT_TAG,
     VM_FLOAT_TAG,
     VM_CHAR_TAG,
     VM_TEXT_TAG,
     VM_COMBINATOR_TAG,
+    VM_OPAQUE_TAG,
     VM_ARRAY_TAG
+};
+
+// some class hierarchy to mimick egel
+class VMObject {
+};
+
+class VMOpaque : public VMObject {
+};
+
+class VMCombinator: public VMObject {
 };
 
 typedef vm_tagbits_t unsigned int;
@@ -16,7 +29,6 @@ typedef vm_tagbits_t unsigned int;
 const VM_TAG_BITS   = 3;
 const VM_TAG_MASK   = (1<<VM_TAG_BITS)-1;
 const VM_RC_ONE     = 1<<VM_TAG_BITS;
-const VM_RC_MASK    = ~VM_TAG_MASK;
 
 inline vm_tag_t vm_tagbits_tag(const vm_tagbits_t bb) {
     return (vm_tag_t) (bb & VM_TAG_MASK);
@@ -34,20 +46,22 @@ inline vm_tagbits_t vm_tagbits_dec(const vm_tagbits_t bb) {
     return bb-VM_RC_ONE;
 };
 
-union vm_base_t {
+// an egel value
+
+union vm_object_t {
     vm_tagbits_t    tagbits;
-    vm_base_t*      next;
+    vm_object_t*      next;
 };
 
-inline vm_tag_t vm_base_tag(const vm_base_t* p) {
+inline vm_tag_t vm_object_tag(const vm_object_t* p) {
     return vm_tagbits_tag(p->tagbits);
 };
 
-inline vm_tag_t vm_base_rc(const vm_base_t* p) {
+inline vm_tag_t vm_object_rc(const vm_object_t* p) {
     return vm_tagbits_rc(p->tagbits);
 };
 
-inline void vm_base_inc(const vm_base_t* p) {
+inline void vm_object_inc(const vm_object_t* p) {
     bool updated = false;
     while (!updated) {
         auto bb0 = p->tagbits;
@@ -56,9 +70,9 @@ inline void vm_base_inc(const vm_base_t* p) {
     }
 };
 
-inline void vm_base_free(const vm_base_t* p);
+inline void vm_object_free(const vm_object_t* p);
 
-inline bool vm_base_dec_prim(const vm_base_t* p) {
+inline bool vm_object_dec_prim(const vm_object_t* p) {
     bool updated = false;
     while (!updated) { // an update may fail
         auto bb0 = p->tagbits;
@@ -68,125 +82,158 @@ inline bool vm_base_dec_prim(const vm_base_t* p) {
     }
 };
 
-inline void vm_base_dec(const vm_base_t* p) {
-    if (vm_base_dec_prim(p)) vm_base_free(p);
+inline void vm_object_dec(const vm_object_t* p) {
+    if (vm_object_dec_prim(p)) vm_object_free(p);
 };
 
-inline void vm_list_append(const vm_base_t* p, const vm_base_t* ll) {
+inline void vm_list_append(const vm_object_t* p, const vm_object_t* ll) {
     p->next = ll;
     return p;
 };
 
-inline void vm_list_head(const vm_base_t* ll) { // a bit weird for orthogonality
+inline void vm_list_head(const vm_object_t* ll) { // a bit weird for orthogonality
     return ll;
 };
 
-inline void vm_list_tail(const vm_base_t* ll) {
+inline void vm_list_tail(const vm_object_t* ll) {
     return ll->next;
 };
 
+// egel integers
+
 struct vm_integer_t {
-    vm_base_t       base;
+    vm_object_t       base;
     int             value;
 };
 
-inline vm_base_t* vm_integer_create(int v) {
+inline vm_object_t* vm_integer_create(int v) {
     auto p = (vm_integer_t*) malloc(size_of(vm_integer_t));
     p->base.tagbits = VM_RC_ONE | VM_INT_TAG;
     p->value   = v;
 };
 
-inline bool vm_is_integer(const vm_base_t* p) {
-    return vm_base_tag(p) == VM_INT_TAG;
+inline bool vm_is_integer(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_INT_TAG;
 };
 
-inline int vm_integer_value(const vm_base_t* p) {
+inline int vm_integer_value(const vm_object_t* p) {
     return ((vm_integer_t*) p)->value;
 };
 
+// egel floats
+
 struct vm_float_t {
-    vm_base_t       base;
+    vm_object_t       base;
     float           value;
 };
 
-inline vm_base_t* vm_float_create(float v) {
+inline vm_object_t* vm_float_create(float v) {
     auto p = (vm_float_t*) malloc(size_of(vm_float_t));
     p->base.tagbits = VM_RC_ONE | VM_FLOAT_TAG;
     p->value   = v;
 };
 
-inline bool vm_is_float(const vm_base_t* p) {
-    return vm_base_tag(p) == VM_FLOAT_TAG;
+inline bool vm_is_float(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_FLOAT_TAG;
 };
 
-inline float vm_float_value(const vm_base_t* p) {
+inline float vm_float_value(const vm_object_t* p) {
     return ((vm_float_t*) p)->value;
 };
 
+// egel UTF characters/code points
+
 struct vm_char_t {
-    vm_base_t       base;
+    vm_object_t       base;
     float           value;
 };
 
-inline vm_base_t* vm_char_create(char v) {
+inline vm_object_t* vm_char_create(char v) {
     auto p = (vm_char_t*) malloc(size_of(vm_char_t));
     p->base.tagbits = VM_RC_ONE | VM_CHAR_TAG;
     p->value   = v;
 };
 
-inline bool vm_is_char(const vm_base_t* p) {
-    return vm_base_tag(p) == VM_CHAR_TAG;
+inline bool vm_is_char(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_CHAR_TAG;
 };
 
-inline char vm_char_value(const vm_base_t* p) {
+inline char vm_char_value(const vm_object_t* p) {
     return ((vm_char_t*) p)->value;
 };
 
+// egel texts
+
 struct vm_text_t {
-    vm_base_t       base;
+    vm_object_t       base;
     void*           value;
 };
 
-inline vm_base_t* vm_text_create(void* v) {
+inline vm_object_t* vm_text_create(void* v) {
     auto p = (vm_text_t*) malloc(size_of(vm_text_t));
     p->base.tagbits = VM_RC_ONE | VM_TEXT_TAG;
     p->value   = v;
 };
 
-inline bool vm_is_text(const vm_base_t* p) {
-    return vm_base_tag(p) == VM_TEXT_TAG;
+inline bool vm_is_text(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_TEXT_TAG;
 };
 
-inline void* vm_text_value(const vm_base_t* p) {
+inline void* vm_text_value(const vm_object_t* p) {
     return ((vm_text_t*) p)->value;
 };
 
+// egel combinators
+
 struct vm_combinator_t {
-    vm_base_t       base;
-    void*           value;
+    vm_object_t       base;
+    VMObject*       value;
 };
 
-inline vm_base_t* vm_combinator_create(void* v) {
+inline vm_object_t* vm_combinator_create(void* v) {
     auto p = (vm_combinator_t*) malloc(size_of(vm_combinator_t));
     p->base.tagbits = VM_RC_ONE | VM_COMBINATOR_TAG;
     p->value   = v;
 };
 
-inline bool vm_is_combinator(const vm_base_t* p) {
-    return vm_base_tag(p) == VM_COMBINATOR_TAG;
+inline bool vm_is_combinator(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_COMBINATOR_TAG;
 };
 
-inline void* vm_combinator_value(const vm_base_t* p) {
+inline void* vm_combinator_value(const vm_object_t* p) {
     return ((vm_combinator_t*) p)->value;
 };
 
-struct vm_array_t {
-    vm_base_t       base;
-    int             size;
-    vm_base_t[]     value;
+// egel (mutable) opaque objects
+
+struct vm_opaque_t {
+    vm_object_t       base;
+    VMObject*       value;
 };
 
-inline vm_base_t* vm_array_create(int sz) {
+inline vm_object_t* vm_opaque_create(void* v) {
+    auto p = (vm_opaque_t*) malloc(size_of(vm_opaque_t));
+    p->base.tagbits = VM_RC_ONE | VM_OPAQUE_TAG;
+    p->value   = v;
+};
+
+inline bool vm_is_opaque(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_OPAQUE_TAG;
+};
+
+inline VMObject* vm_opaque_value(const vm_object_t* p) {
+    return ((vm_opaque_t*) p)->value;
+};
+
+// egel arrays
+
+struct vm_array_t {
+    vm_object_t       base;
+    int             size;
+    vm_object_t[]     value;
+};
+
+inline vm_object_t* vm_array_create(int sz) {
     auto p = (vm_combinator_t*) malloc(size_of(vm_combinator_t));
     p->base.tagbits = VM_RC_ONE | VM_ARRAY_TAG;
     p->size    = sz;
@@ -195,26 +242,36 @@ inline vm_base_t* vm_array_create(int sz) {
     }
 };
 
-inline bool vm_is_array(const vm_base_t* p) {
-    return vm_base_tag(p) == VM_ARRAY_TAG;
+inline bool vm_is_array(const vm_object_t* p) {
+    return vm_object_tag(p) == VM_ARRAY_TAG;
 };
 
-inline int vm_array_size(const vm_base_t* p) {
+inline int vm_array_size(const vm_object_t* p) {
     return ((vm_array_t*) p)->size;
 };
 
-inline vm_base_t* vm_array_get(const vm_base_t* p, int n) {
+inline vm_object_t* vm_array_get(const vm_object_t* p, int n) {
     return ((vm_array_t*) p)->value[n];
 };
 
-inline void vm_array_set(const vm_base_t* p, int n, const vm_base_t* v) {
+inline void vm_array_set(const vm_object_t* p, int n, const vm_object_t* v) {
     ((vm_array_t*) p)->value[n] = v;
 };
 
-inline void vm_array_free(const vm_base_t* p) {
+// freeing stuff
+
+inline void vm_atom_free(const vm_object_t* p) {
+    if (vm_object_tag(p) == VM_OPAQUE_TAG) {
+        auto o = vm_opaque_value(p);
+        delete o;
+    }
+    free(p);
+};
+
+inline void vm_array_free(const vm_object_t* p) {
     p->next = nullptr;
-    vm_base_t*  do_list   = p; // do list is a list of array values with refcount 0
-    vm_base_t*  free_list = nullptr;
+    vm_object_t*  do_list   = p; // do list is a list of array values with refcount 0
+    vm_object_t*  free_list = nullptr;
 
     while (do_list != nullptr) {
         auto p0 = vm_list_head(do_list);
@@ -223,10 +280,10 @@ inline void vm_array_free(const vm_base_t* p) {
 
         for (int n = 0; n < vm_array_size(p0); n++) {
             auto p1 = vm_array_get(p0, n);
-            bool zero = vm_base_dec_prim(p1);
+            bool zero = vm_object_dec_prim(p1);
             if (zero) {
                 if (t != VM_ARRAY_TAG) {
-                    free(p1);
+                    vm_atom_free(p1);
                 } else {
                     do_list = vm_list_append(p1, do_list);
                 }
@@ -241,10 +298,10 @@ inline void vm_array_free(const vm_base_t* p) {
     }
 };
 
-inline void vm_base_free(const vm_base_t* p) {
-    auto t = vm_base_tag(p);
+inline void vm_object_free(const vm_object_t* p) {
+    auto t = vm_object_tag(p);
     if (t != VM_ARRAY_TAG) {
-        free(p);
+        vm_atom_free(p);
     } else {
         vm_array_free(p);
     }
