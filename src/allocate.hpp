@@ -58,16 +58,31 @@ inline void vm_base_inc(const vm_base_t* p) {
 
 inline void vm_base_free(const vm_base_t* p);
 
-inline void vm_base_dec(const vm_base_t* p) {
+inline bool vm_base_dec_prim(const vm_base_t* p) {
     bool updated = false;
     while (!updated) { // an update may fail
         auto bb0 = p->tagbits;
         auto bb1 = vm_tagbits_dec(bb0);
         updated = std::atomic_compare_exchange_weak(&p->tagbits, bb0, bb1);
-        if (updated && (vm_tagbits_rc(bb1) == 0)) { // only one thread should free
-            vm_base_free(p);
-        }
+        return (updated && (vm_tagbits_rc(bb1) == 0)); // only this thread should free
     }
+};
+
+inline void vm_base_dec(const vm_base_t* p) {
+    if (vm_base_dec_prim(p)) vm_base_free(p);
+};
+
+inline void vm_list_append(const vm_base_t* p, const vm_base_t* ll) {
+    p->next = ll;
+    return p;
+};
+
+inline void vm_list_head(const vm_base_t* ll) { // a bit weird for orthogonality
+    return ll;
+};
+
+inline void vm_list_tail(const vm_base_t* ll) {
+    return ll->next;
 };
 
 struct vm_integer_t {
@@ -196,18 +211,34 @@ inline void vm_array_set(const vm_base_t* p, int n, const vm_base_t* v) {
     ((vm_array_t*) p)->value[n] = v;
 };
 
-struct vm_list {
-    vm_list*    next;
-};
-
-inline void vm_list_append(const vm_base_t* p, const vm_list* ll) {
-    auto ll0 = (vm_list*) p;
-    ll0->next = 
-    return ((vm_list*) p)->next = 
-};
-
 inline void vm_array_free(const vm_base_t* p) {
-    
+    p->next = nullptr;
+    vm_base_t*  do_list   = p; // do list is a list of array values with refcount 0
+    vm_base_t*  free_list = nullptr;
+
+    while (do_list != nullptr) {
+        auto p0 = vm_list_head(do_list);
+        do_list = vm_list_tail(do_list);
+        free_list = vm_list_append(p0, free_list);
+
+        for (int n = 0; n < vm_array_size(p0); n++) {
+            auto p1 = vm_array_get(p0, n);
+            bool zero = vm_base_dec_prim(p1);
+            if (zero) {
+                if (t != VM_ARRAY_TAG) {
+                    free(p1);
+                } else {
+                    do_list = vm_list_append(p1, do_list);
+                }
+            }
+        }
+    }
+
+    while (free_list != nullptr) {
+        auto p = vm_list_head(free_list);
+        free_list = vm_list_tail(free_list);
+        free(p);
+    }
 };
 
 inline void vm_base_free(const vm_base_t* p) {
