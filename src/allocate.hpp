@@ -82,7 +82,7 @@ inline bool vm_object_dec_prim(vm_object_t* p) {
         vm_tagbits_t bb0 = p->tagbits;
         vm_tagbits_t bb1 = vm_tagbits_dec(bb0);
         updated = std::atomic_compare_exchange_weak(&(p->tagbits), &bb0, bb1);
-        if (updated) {
+        if (updated) {  // only one thread should free a zero refcount
             hit_zero = (vm_tagbits_rc(bb1) == 0);
         }
     }
