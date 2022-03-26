@@ -234,7 +234,7 @@ inline VMObject* vm_opaque_value(const vm_object_t* p) {
 struct vm_array_t {
     vm_object_t base;
     int size;
-    vm_object_t* value[0];
+    vm_object_t* value[];
 };
 
 inline vm_object_t* vm_array_create(int sz) {
@@ -258,7 +258,7 @@ inline vm_object_t* vm_array_get(const vm_object_t* p, int n) {
     return ((vm_array_t*)p)->value[n];
 };
 
-inline void vm_array_set(const vm_object_t* p, int n, const vm_object_t* v) {
+inline void vm_array_set(vm_object_t* p, int n, vm_object_t* v) {
     ((vm_array_t*)p)->value[n] = v;
 };
 
@@ -287,7 +287,7 @@ inline void vm_array_free(vm_object_t* p) {
             auto p1 = vm_array_get(p0, n);
             bool zero = vm_object_dec_prim(p1);
             if (zero) {
-                if (t != VM_ARRAY_TAG) {
+                if (vm_object_tag(p1) != VM_ARRAY_TAG) {
                     vm_atom_free(p1);
                 } else {
                     do_list = vm_list_append(p1, do_list);
@@ -303,7 +303,7 @@ inline void vm_array_free(vm_object_t* p) {
     }
 };
 
-inline void vm_object_free(const vm_object_t* p) {
+inline void vm_object_free(vm_object_t* p) {
     auto t = vm_object_tag(p);
     if (t != VM_ARRAY_TAG) {
         vm_atom_free(p);
