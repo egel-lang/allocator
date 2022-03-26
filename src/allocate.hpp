@@ -52,8 +52,8 @@ inline vm_tagbits_t vm_tagbits_dec(const vm_tagbits_t bb) {
 // an egel value
 
 union vm_object_t {
-    std::atomic<vm_tagbits_t>   tagbits;
-    vm_object_t*                next;
+    std::atomic<vm_tagbits_t> tagbits;
+    vm_object_t* next;
 };
 
 inline vm_tag_t vm_object_tag(const vm_object_t* p) {
@@ -64,7 +64,7 @@ inline unsigned int vm_object_rc(const vm_object_t* p) {
     return vm_tagbits_rc(p->tagbits);
 };
 
-inline void vm_object_inc(const vm_object_t* p) {
+inline void vm_object_inc(vm_object_t* p) {
     bool updated = false;
     while (!updated) {
         vm_tagbits_t bb0 = p->tagbits;
@@ -73,20 +73,23 @@ inline void vm_object_inc(const vm_object_t* p) {
     }
 };
 
-inline void vm_object_free(const vm_object_t* p);
+inline void vm_object_free(vm_object_t* p);
 
-inline bool vm_object_dec_prim(const vm_object_t* p) {
+inline bool vm_object_dec_prim(vm_object_t* p) {
     bool updated = false;
+    bool hit_zero = false;
     while (!updated) {  // an update may fail
         vm_tagbits_t bb0 = p->tagbits;
         vm_tagbits_t bb1 = vm_tagbits_dec(bb0);
-        updated = std::atomic_compare_exchange_weak(&p->tagbits, bb0, bb1);
-        return (updated &&
-                (vm_tagbits_rc(bb1) == 0));  // only this thread should free
+        updated = std::atomic_compare_exchange_weak(&(p->tagbits), &bb0, bb1);
+        if (updated) {
+            hit_zero = (vm_tagbits_rc(bb1) == 0);
+        }
     }
+    return hit_zero;
 };
 
-inline void vm_object_dec(const vm_object_t* p) {
+inline void vm_object_dec(vm_object_t* p) {
     if (vm_object_dec_prim(p)) vm_object_free(p);
 };
 
@@ -95,7 +98,8 @@ inline vm_object_t* vm_list_append(vm_object_t* p, vm_object_t* ll) {
     return p;
 };
 
-inline vm_object_t* vm_list_head(vm_object_t* ll) {  // a bit weird for orthogonality
+inline vm_object_t* vm_list_head(
+    vm_object_t* ll) {  // a bit weird for orthogonality
     return ll;
 };
 
@@ -114,6 +118,7 @@ inline vm_object_t* vm_integer_create(int v) {
     auto p = (vm_integer_t*)malloc(sizeof(vm_integer_t));
     p->base.tagbits = VM_RC_ONE | VM_INT_TAG;
     p->value = v;
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_integer(const vm_object_t* p) {
@@ -132,9 +137,10 @@ struct vm_float_t {
 };
 
 inline vm_object_t* vm_float_create(float v) {
-    auto p = (vm_float_t*)malloc(size_of(vm_float_t));
+    auto p = (vm_float_t*)malloc(sizeof(vm_float_t));
     p->base.tagbits = VM_RC_ONE | VM_FLOAT_TAG;
     p->value = v;
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_float(const vm_object_t* p) {
@@ -153,9 +159,10 @@ struct vm_char_t {
 };
 
 inline vm_object_t* vm_char_create(UChar32 v) {
-    auto p = (vm_char_t*)malloc(size_of(vm_char_t));
+    auto p = (vm_char_t*)malloc(sizeof(vm_char_t));
     p->base.tagbits = VM_RC_ONE | VM_CHAR_TAG;
     p->value = v;
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_char(const vm_object_t* p) {
@@ -174,9 +181,10 @@ struct vm_text_t {
 };
 
 inline vm_object_t* vm_text_create(const icu::UnicodeString v) {
-    auto p = (vm_text_t*)malloc(size_of(vm_text_t));
+    auto p = (vm_text_t*)malloc(sizeof(vm_text_t));
     p->base.tagbits = VM_RC_ONE | VM_TEXT_TAG;
     p->value = v;
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_text(const vm_object_t* p) {
@@ -194,10 +202,11 @@ struct vm_combinator_t {
     VMObject* value;
 };
 
-inline vm_object_t* vm_combinator_create(void* v) {
-    auto p = (vm_combinator_t*)malloc(size_of(vm_combinator_t));
+inline vm_object_t* vm_combinator_create(VMObject* v) {
+    auto p = (vm_combinator_t*)malloc(sizeof(vm_combinator_t));
     p->base.tagbits = VM_RC_ONE | VM_COMBINATOR_TAG;
     p->value = v;
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_combinator(const vm_object_t* p) {
@@ -215,10 +224,11 @@ struct vm_opaque_t {
     VMObject* value;
 };
 
-inline vm_object_t* vm_opaque_create(void* v) {
-    auto p = (vm_opaque_t*)malloc(size_of(vm_opaque_t));
+inline vm_object_t* vm_opaque_create(VMObject* v) {
+    auto p = (vm_opaque_t*)malloc(sizeof(vm_opaque_t));
     p->base.tagbits = VM_RC_ONE | VM_OPAQUE_TAG;
     p->value = v;
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_opaque(const vm_object_t* p) {
@@ -234,16 +244,18 @@ inline VMObject* vm_opaque_value(const vm_object_t* p) {
 struct vm_array_t {
     vm_object_t base;
     int size;
-    vm_object_t* value[];
+    vm_object_t* value[1];
 };
 
 inline vm_object_t* vm_array_create(int sz) {
-    auto p = (vm_combinator_t*)malloc(size_of(vm_combinator_t));
+    auto p =
+        (vm_array_t*)malloc(sizeof(vm_array_t) + sz * sizeof(vm_object_t*));
     p->base.tagbits = VM_RC_ONE | VM_ARRAY_TAG;
     p->size = sz;
     for (int n = 0; n < sz; n++) {
         p->value[n] = nullptr;
     }
+    return (vm_object_t*)p;
 };
 
 inline bool vm_is_array(const vm_object_t* p) {
