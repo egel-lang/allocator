@@ -1,3 +1,3 @@
 # An Egel allocator
 
-Spin-off back-end allocator based on mimalloc.
+Mock-up backend Egel allocator based on mimalloc.

@@ -10,7 +10,7 @@
 
 // tag and tagbits
 
-typedef enum vm_tag_t {
+enum vm_tag_t {
     VM_INT_TAG,
     VM_FLOAT_TAG,
     VM_CHAR_TAG,
@@ -27,11 +27,11 @@ class VMOpaque : public VMObject {};
 
 class VMCombinator : public VMObject {};
 
-typedef vm_tagbits_t unsigned int;
+typedef unsigned int vm_tagbits_t;
 
-const VM_TAG_BITS = 3;
-const VM_TAG_MASK = (1 << VM_TAG_BITS) - 1;
-const VM_RC_ONE = 1 << VM_TAG_BITS;
+const unsigned int VM_TAG_BITS = 3;
+const vm_tagbits_t VM_TAG_MASK = (1 << VM_TAG_BITS) - 1;
+const vm_tagbits_t VM_RC_ONE = 1 << VM_TAG_BITS;
 
 inline vm_tag_t vm_tagbits_tag(const vm_tagbits_t bb) {
     return (vm_tag_t)(bb & VM_TAG_MASK);
@@ -52,24 +52,24 @@ inline vm_tagbits_t vm_tagbits_dec(const vm_tagbits_t bb) {
 // an egel value
 
 union vm_object_t {
-    vm_tagbits_t tagbits;
-    vm_object_t* next;
+    std::atomic<vm_tagbits_t>   tagbits;
+    vm_object_t*                next;
 };
 
 inline vm_tag_t vm_object_tag(const vm_object_t* p) {
     return vm_tagbits_tag(p->tagbits);
 };
 
-inline vm_tag_t vm_object_rc(const vm_object_t* p) {
+inline unsigned int vm_object_rc(const vm_object_t* p) {
     return vm_tagbits_rc(p->tagbits);
 };
 
 inline void vm_object_inc(const vm_object_t* p) {
     bool updated = false;
     while (!updated) {
-        auto bb0 = p->tagbits;
-        auto bb1 = vm_tagbits_inc(bb0);
-        updated = std::atomic_compare_exchange_weak(&p->tagbits, bb0, bb1);
+        vm_tagbits_t bb0 = p->tagbits;
+        vm_tagbits_t bb1 = vm_tagbits_inc(bb0);
+        updated = std::atomic_compare_exchange_weak(&(p->tagbits), &bb0, bb1);
     }
 };
 
@@ -78,8 +78,8 @@ inline void vm_object_free(const vm_object_t* p);
 inline bool vm_object_dec_prim(const vm_object_t* p) {
     bool updated = false;
     while (!updated) {  // an update may fail
-        auto bb0 = p->tagbits;
-        auto bb1 = vm_tagbits_dec(bb0);
+        vm_tagbits_t bb0 = p->tagbits;
+        vm_tagbits_t bb1 = vm_tagbits_dec(bb0);
         updated = std::atomic_compare_exchange_weak(&p->tagbits, bb0, bb1);
         return (updated &&
                 (vm_tagbits_rc(bb1) == 0));  // only this thread should free
@@ -90,17 +90,16 @@ inline void vm_object_dec(const vm_object_t* p) {
     if (vm_object_dec_prim(p)) vm_object_free(p);
 };
 
-inline void vm_list_append(const vm_object_t* p, const vm_object_t* ll) {
+inline vm_object_t* vm_list_append(vm_object_t* p, vm_object_t* ll) {
     p->next = ll;
     return p;
 };
 
-inline void vm_list_head(
-    const vm_object_t* ll) {  // a bit weird for orthogonality
+inline vm_object_t* vm_list_head(vm_object_t* ll) {  // a bit weird for orthogonality
     return ll;
 };
 
-inline void vm_list_tail(const vm_object_t* ll) {
+inline vm_object_t* vm_list_tail(const vm_object_t* ll) {
     return ll->next;
 };
 
@@ -112,7 +111,7 @@ struct vm_integer_t {
 };
 
 inline vm_object_t* vm_integer_create(int v) {
-    auto p = (vm_integer_t*)malloc(size_of(vm_integer_t));
+    auto p = (vm_integer_t*)malloc(sizeof(vm_integer_t));
     p->base.tagbits = VM_RC_ONE | VM_INT_TAG;
     p->value = v;
 };
@@ -235,7 +234,7 @@ inline VMObject* vm_opaque_value(const vm_object_t* p) {
 struct vm_array_t {
     vm_object_t base;
     int size;
-    vm_object_t[] value;
+    vm_object_t* value[0];
 };
 
 inline vm_object_t* vm_array_create(int sz) {
@@ -265,7 +264,7 @@ inline void vm_array_set(const vm_object_t* p, int n, const vm_object_t* v) {
 
 // freeing stuff
 
-inline void vm_atom_free(const vm_object_t* p) {
+inline void vm_atom_free(vm_object_t* p) {
     if (vm_object_tag(p) == VM_OPAQUE_TAG) {
         auto o = vm_opaque_value(p);
         delete o;
@@ -273,7 +272,7 @@ inline void vm_atom_free(const vm_object_t* p) {
     free(p);
 };
 
-inline void vm_array_free(const vm_object_t* p) {
+inline void vm_array_free(vm_object_t* p) {
     p->next = nullptr;
     vm_object_t* do_list =
         p;  // do list is a list of array values with refcount 0
