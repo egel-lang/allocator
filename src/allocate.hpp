@@ -21,11 +21,23 @@ enum vm_tag_t {
 };
 
 // some class hierarchy to mimick egel
-class VMObject {};
+class VMObject {
+public:
+    VMObject() {};
+    virtual ~VMObject() {};
+};
 
-class VMOpaque : public VMObject {};
+class VMOpaque : public VMObject {
+public:
+    VMOpaque() {};
+    ~VMOpaque() {};
+};
 
-class VMCombinator : public VMObject {};
+class VMCombinator : public VMObject {
+public:
+    VMCombinator() {};
+    ~VMCombinator() {};
+};
 
 typedef unsigned int vm_tagbits_t;
 
@@ -277,7 +289,7 @@ inline void vm_array_set(vm_object_t* p, int n, vm_object_t* v) {
 // freeing stuff
 
 inline void vm_atom_free(vm_object_t* p) {
-    if (vm_object_tag(p) == VM_OPAQUE_TAG) {
+    if (vm_is_opaque(p)) {
         auto o = vm_opaque_value(p);
         delete o;
     }
@@ -299,10 +311,10 @@ inline void vm_array_free(vm_object_t* p) {
             auto p1 = vm_array_get(p0, n);
             bool zero = vm_object_dec_prim(p1);
             if (zero) {
-                if (vm_object_tag(p1) != VM_ARRAY_TAG) {
-                    vm_atom_free(p1);
-                } else {
+                if (vm_is_array(p1)) {
                     do_list = vm_list_append(p1, do_list);
+                } else {
+                    vm_atom_free(p1);
                 }
             }
         }
@@ -316,10 +328,10 @@ inline void vm_array_free(vm_object_t* p) {
 };
 
 inline void vm_object_free(vm_object_t* p) {
-    auto t = vm_object_tag(p);
-    if (t != VM_ARRAY_TAG) {
-        vm_atom_free(p);
-    } else {
+    std::cout << " call on free " << std::endl;
+    if (vm_is_array(p)) {
         vm_array_free(p);
+    } else {
+        vm_atom_free(p);
     }
 };

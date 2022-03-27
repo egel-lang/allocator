@@ -32,6 +32,26 @@ public:
 
 };
 
+class NoisyF: public VMCombinator {
+public:
+    NoisyF() {
+        std::cout << "F got created" << std::endl;
+    }
+    ~NoisyF() {
+        std::cout << "F got destroyed" << std::endl;
+    }
+};
+
+class NoisyO: public VMOpaque {
+public:
+    NoisyO() {
+        std::cout << "O got created" << std::endl;
+    }
+    ~NoisyO() {
+        std::cout << "O got destroyed" << std::endl;
+    }
+};
+
 class Test01 : public Test {
     icu::UnicodeString title() override {
         return "allocate atoms";
@@ -77,6 +97,29 @@ class Test01 : public Test {
         std::cout << "decref" << std::endl;
         vm_object_dec(t0);
         vm_object_dec(t0);
+
+        std::cout << "create test NoisyO" << std::endl;
+        auto O = new NoisyO();
+        auto o0 = vm_opaque_create(O);
+        vm_object_inc(o0);
+        std::cout << "is_opaque: " << vm_is_opaque(o0) << std::endl;
+        std::cout << "value: " << vm_opaque_value(o0) << std::endl;
+        std::cout << "refcount:" << vm_object_rc(o0) << std::endl;
+        std::cout << "decref" << std::endl;
+        vm_object_dec(o0);
+        vm_object_dec(o0);
+
+        std::cout << "create test NoisyF" << std::endl;
+        auto F = new NoisyF();
+        auto a0 = vm_combinator_create(F);
+        vm_object_inc(a0);
+        std::cout << "is_combinator: " << vm_is_combinator(a0) << std::endl;
+        std::cout << "value: " << vm_combinator_value(a0) << std::endl;
+        std::cout << "refcount:" << vm_object_rc(a0) << std::endl;
+        std::cout << "decref" << std::endl;
+        vm_object_dec(a0);
+        vm_object_dec(a0);
+        delete F;
     };
 };
 
