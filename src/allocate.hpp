@@ -260,8 +260,8 @@ struct vm_object_array_t {
 };
 
 inline vm_object_t* vm_array_create(int sz) {
-    auto p =
-        (vm_object_array_t*)malloc(sizeof(vm_object_array_t) + sz * sizeof(vm_object_t*));
+    auto p = (vm_object_array_t*)malloc(sizeof(vm_object_array_t) +
+                                        sz * sizeof(vm_object_t*));
     p->base.tagbits = VM_RC_ONE | VM_ARRAY_TAG;
     p->size = sz;
     for (int n = 0; n < sz; n++) {

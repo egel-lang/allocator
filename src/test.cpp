@@ -40,16 +40,18 @@ public:
                   << std::endl;
         std::cout << "sizeof(vm_object_int_t)\t = " << sizeof(vm_object_int_t)
                   << std::endl;
-        std::cout << "sizeof(vm_object_float_t)\t = " << sizeof(vm_object_float_t)
+        std::cout << "sizeof(vm_object_float_t)\t = "
+                  << sizeof(vm_object_float_t) << std::endl;
+        std::cout << "sizeof(vm_object_char_t)\t = " << sizeof(vm_object_char_t)
                   << std::endl;
-        std::cout << "sizeof(vm_object_char_t)\t = " << sizeof(vm_object_char_t) << std::endl;
-        std::cout << "sizeof(vm_object_text_t)\t = " << sizeof(vm_object_text_t) << std::endl;
-        std::cout << "sizeof(vm_object_combinator_t)\t = " << sizeof(vm_object_combinator_t)
+        std::cout << "sizeof(vm_object_text_t)\t = " << sizeof(vm_object_text_t)
                   << std::endl;
-        std::cout << "sizeof(vm_object_opaque_t)\t = " << sizeof(vm_object_opaque_t)
-                  << std::endl;
-        std::cout << "sizeof(vm_object_array_t)\t = " << sizeof(vm_object_array_t)
-                  << std::endl;
+        std::cout << "sizeof(vm_object_combinator_t)\t = "
+                  << sizeof(vm_object_combinator_t) << std::endl;
+        std::cout << "sizeof(vm_object_opaque_t)\t = "
+                  << sizeof(vm_object_opaque_t) << std::endl;
+        std::cout << "sizeof(vm_object_array_t)\t = "
+                  << sizeof(vm_object_array_t) << std::endl;
     };
 };
 
@@ -246,7 +248,7 @@ public:
         } else {
             auto cons = vm_array_create(2);
             auto el = vm_opaque_create(new NoisyO());
-            auto tail = make_list(n-1);
+            auto tail = make_list(n - 1);
             vm_array_set(cons, 0, el);
             vm_array_set(cons, 1, tail);
             return cons;
