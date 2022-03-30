@@ -38,17 +38,17 @@ public:
     void test() override {
         std::cout << "sizeof(vm_object_t)\t = " << sizeof(vm_object_t)
                   << std::endl;
-        std::cout << "sizeof(vm_integer_t)\t = " << sizeof(vm_integer_t)
+        std::cout << "sizeof(vm_object_int_t)\t = " << sizeof(vm_object_int_t)
                   << std::endl;
-        std::cout << "sizeof(vm_float_t)\t = " << sizeof(vm_float_t)
+        std::cout << "sizeof(vm_object_float_t)\t = " << sizeof(vm_object_float_t)
                   << std::endl;
-        std::cout << "sizeof(vm_char_t)\t = " << sizeof(vm_char_t) << std::endl;
-        std::cout << "sizeof(vm_text_t)\t = " << sizeof(vm_text_t) << std::endl;
-        std::cout << "sizeof(vm_combinator_t)\t = " << sizeof(vm_combinator_t)
+        std::cout << "sizeof(vm_object_char_t)\t = " << sizeof(vm_object_char_t) << std::endl;
+        std::cout << "sizeof(vm_object_text_t)\t = " << sizeof(vm_object_text_t) << std::endl;
+        std::cout << "sizeof(vm_object_combinator_t)\t = " << sizeof(vm_object_combinator_t)
                   << std::endl;
-        std::cout << "sizeof(vm_opaque_t)\t = " << sizeof(vm_opaque_t)
+        std::cout << "sizeof(vm_object_opaque_t)\t = " << sizeof(vm_object_opaque_t)
                   << std::endl;
-        std::cout << "sizeof(vm_array_t)\t = " << sizeof(vm_array_t)
+        std::cout << "sizeof(vm_object_array_t)\t = " << sizeof(vm_object_array_t)
                   << std::endl;
     };
 };
@@ -79,11 +79,11 @@ class Test01 : public Test {
     };
 
     void test() override {
-        std::cout << "create integer 42" << std::endl;
-        auto i0 = vm_integer_create(42);
+        std::cout << "create int 42" << std::endl;
+        auto i0 = vm_int_create(42);
         vm_object_inc(i0);
-        std::cout << "is_integer: " << vm_is_integer(i0) << std::endl;
-        std::cout << "value: " << vm_integer_value(i0) << std::endl;
+        std::cout << "is_int: " << vm_is_int(i0) << std::endl;
+        std::cout << "value: " << vm_int_value(i0) << std::endl;
         std::cout << "refcount:" << vm_object_rc(i0) << std::endl;
         std::cout << "decref" << std::endl;
         vm_object_dec(i0);
@@ -152,7 +152,7 @@ class Test02 : public Test {
     vm_object_t* make_array(int size) {
         auto a = vm_array_create(size);
         for (int n = 0; n < size; n++) {
-            auto p = vm_integer_create(n);
+            auto p = vm_int_create(n);
             vm_array_set(a, n, p);
         };
         return a;
@@ -165,8 +165,8 @@ class Test02 : public Test {
             std::cout << "[" << size << "] ";
             for (int n = 0; n < size; n++) {
                 auto p = vm_array_get(a, n);
-                if (vm_is_integer(p)) {
-                    std::cout << vm_integer_value(p) << " ";
+                if (vm_is_int(p)) {
+                    std::cout << vm_int_value(p) << " ";
                 } else {
                     error("not an int");
                 }
@@ -219,7 +219,7 @@ public:
 
     void test() override {
         Test03::start = false;
-        auto o = vm_integer_create(42);
+        auto o = vm_int_create(42);
         std::thread tt[THREADS];
         for (int n = 0; n < THREADS; n++) {
             tt[n] = std::thread(&Test03::up_down, this, n, o);
