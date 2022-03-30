@@ -1,6 +1,7 @@
 #include "allocate.hpp"
 
 #include <thread>
+#include <vector>
 
 class Test {
 public:
@@ -216,12 +217,106 @@ public:
         vm_object_dec(o);
     }
 };
-
 volatile bool Test03::start;
+
+class Test04 : public Test {
+public:
+    icu::UnicodeString title() override {
+        return "binary trees";
+    };
+
+    static constexpr auto MIN_DEPTH = 4;
+    static constexpr auto MAX_DEPTH = 21;
+    static constexpr auto STRETCH_DEPTH = MAX_DEPTH+1;
+
+    vm_object_t* make_node(vm_object_t* l, vm_object_t* r) {
+        auto t = vm_array_create(2);
+        vm_array_set(t, 0, l);
+        vm_array_set(t, 1, r);
+        return t;
+    }
+
+    vm_object_t* make_tree(int n) {
+        if (n == 0) {
+            return nullptr;
+        } else {
+            return make_node(make_tree(n-1), make_tree(n-1));
+        }
+    }
+
+    int check(vm_object_t* t) {
+        if (t == nullptr) {
+            return 1;
+        } else if (vm_is_array(t) && (vm_array_size(t) == 2)) {
+            return 1 + check(vm_array_get(t, 0)) + check(vm_array_get(t, 1));
+        } else {
+            error("not a tree");
+            return 0;
+        }
+    }
+
+    static volatile bool start;
+
+    void test_stretch() {
+        auto t = make_tree(STRETCH_DEPTH);
+        std::cout << "stretch tree of depth " << STRETCH_DEPTH << "\t "
+                  << "check: " << check(t) << std::endl;
+        vm_object_dec(t);
+    }
+
+    int run_parallel(unsigned depth, int iterations, unsigned int workers = std::thread::hardware_concurrency())
+    {
+    std::vector<std::thread> threads;
+    threads.reserve(workers);
+
+    std::atomic_int counter = iterations;
+    std::atomic_int output = 0;
+
+    auto me = this;
+
+    for(unsigned i = 0; i < workers; ++i) {
+        threads.push_back(std::thread([&counter, depth, &output, me] {
+            int checksum = 0;
+
+            while(--counter >= 0) {
+                auto t     = me->make_tree(depth);
+                checksum    += me->check(t);
+                vm_object_dec(t);
+            }
+
+            output += checksum;
+        }));
+    }
+
+    for(unsigned i = 0; i < workers; ++i) {
+        threads[i].join();
+    }
+
+    return output;
+}
+
+    void test() override {
+        test_stretch();
+        auto long_tree = make_tree(MAX_DEPTH);
+
+        for (int d = MIN_DEPTH; d <= MAX_DEPTH; d += 2) {
+            const int iterations = 1 << (MAX_DEPTH - d + MIN_DEPTH);
+            auto const c = run_parallel(d, iterations);
+
+            std::cout << iterations << "\t trees of depth " << d << "\t check: " << c << "\n";
+        }
+
+        std::cout << "long lived tree of depth " << MAX_DEPTH << "\t "
+              << "check: " << check(long_tree) << "\n";
+
+    }
+};
+
 
 int main(int argc, char *argv[]) {
     Test00().runtest();
     Test01().runtest();
     Test02().runtest();
     Test03().runtest();
+    Test04().runtest();
 };

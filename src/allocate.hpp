@@ -309,12 +309,14 @@ inline void vm_array_free(vm_object_t* p) {
 
         for (int n = 0; n < vm_array_size(p0); n++) {
             auto p1 = vm_array_get(p0, n);
-            bool zero = vm_object_dec_prim(p1);
-            if (zero) {
-                if (vm_is_array(p1)) {
-                    do_list = vm_list_append(p1, do_list);
-                } else {
-                    vm_atom_free(p1);
+            if (p1 != nullptr) {
+                bool zero = vm_object_dec_prim(p1);
+                if (zero) {
+                    if (vm_is_array(p1)) {
+                        do_list = vm_list_append(p1, do_list);
+                    } else {
+                        vm_atom_free(p1);
+                    }
                 }
             }
         }
