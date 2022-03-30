@@ -11,6 +11,11 @@ public:
         std::cout << "## " << title() << " ##" << std::endl;
         test();
     };
+
+    virtual void error(const icu::UnicodeString& e) {
+        std::cout << "error: " << e << std::endl;
+        exit(1);
+    }
 };
 
 class Test00 : public Test {
@@ -123,8 +128,54 @@ class Test01 : public Test {
     };
 };
 
+class Test02 : public Test {
+    icu::UnicodeString title() override {
+        return "allocate arrays";
+    };
+
+    vm_object_t* make_array(int size) {
+        auto a = vm_array_create(size);
+        for (int n = 0; n < size; n++) {
+            auto p = vm_integer_create(n);
+            vm_array_set(a, n, p);
+        };
+        return a;
+    }
+
+    void print_array(vm_object_t* a) {
+        if (vm_is_array(a)) {
+            std::cout << "array ";
+            auto size = vm_array_size(a);
+            std::cout << "[" << size << "] ";
+            for (int n = 0; n < size; n++) {
+                auto p = vm_array_get(a, n);
+                if (vm_is_integer(p)) {
+                    std::cout << vm_integer_value(p) << " ";
+                } else {
+                    error("not an int");
+                }
+            }
+            std::cout << std::endl;
+         } else {
+            error("not an array");
+         }
+     }
+
+     void test() override {
+        for (int size = 0; size < 10; size++) {
+            auto a = make_array(size);
+            print_array(a);
+            vm_object_dec(a);
+        }
+        auto a = make_array(1000);
+        print_array(a);
+        vm_object_dec(a);
+        
+     }
+};
+
 int main(int argc, char *argv[]) {
     Test00().runtest();
     Test01().runtest();
-
+    Test02().runtest();
 };

@@ -328,7 +328,6 @@ inline void vm_array_free(vm_object_t* p) {
 };
 
 inline void vm_object_free(vm_object_t* p) {
-    std::cout << " call on free " << std::endl;
     if (vm_is_array(p)) {
         vm_array_free(p);
     } else {
