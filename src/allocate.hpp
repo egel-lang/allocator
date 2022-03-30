@@ -23,20 +23,20 @@ enum vm_tag_t {
 // some class hierarchy to mimick egel
 class VMObject {
 public:
-    VMObject() {};
-    virtual ~VMObject() {};
+    VMObject(){};
+    virtual ~VMObject(){};
 };
 
 class VMOpaque : public VMObject {
 public:
-    VMOpaque() {};
-    ~VMOpaque() {};
+    VMOpaque(){};
+    ~VMOpaque(){};
 };
 
 class VMCombinator : public VMObject {
 public:
-    VMCombinator() {};
-    ~VMCombinator() {};
+    VMCombinator(){};
+    ~VMCombinator(){};
 };
 
 typedef unsigned int vm_tagbits_t;

@@ -1,8 +1,8 @@
-#include "allocate.hpp"
-
+#include <chrono>
 #include <thread>
 #include <vector>
-#include <chrono>
+
+#include "allocate.hpp"
 
 class Test {
 public:
@@ -36,19 +36,24 @@ public:
     };
 
     void test() override {
-        std::cout << "sizeof(vm_object_t)\t = " << sizeof(vm_object_t) << std::endl;
-        std::cout << "sizeof(vm_integer_t)\t = " << sizeof(vm_integer_t) << std::endl;
-        std::cout << "sizeof(vm_float_t)\t = " << sizeof(vm_float_t) << std::endl;
+        std::cout << "sizeof(vm_object_t)\t = " << sizeof(vm_object_t)
+                  << std::endl;
+        std::cout << "sizeof(vm_integer_t)\t = " << sizeof(vm_integer_t)
+                  << std::endl;
+        std::cout << "sizeof(vm_float_t)\t = " << sizeof(vm_float_t)
+                  << std::endl;
         std::cout << "sizeof(vm_char_t)\t = " << sizeof(vm_char_t) << std::endl;
         std::cout << "sizeof(vm_text_t)\t = " << sizeof(vm_text_t) << std::endl;
-        std::cout << "sizeof(vm_combinator_t)\t = " << sizeof(vm_combinator_t) << std::endl;
-        std::cout << "sizeof(vm_opaque_t)\t = " << sizeof(vm_opaque_t) << std::endl;
-        std::cout << "sizeof(vm_array_t)\t = " << sizeof(vm_array_t) << std::endl;
+        std::cout << "sizeof(vm_combinator_t)\t = " << sizeof(vm_combinator_t)
+                  << std::endl;
+        std::cout << "sizeof(vm_opaque_t)\t = " << sizeof(vm_opaque_t)
+                  << std::endl;
+        std::cout << "sizeof(vm_array_t)\t = " << sizeof(vm_array_t)
+                  << std::endl;
     };
-
 };
 
-class NoisyF: public VMCombinator {
+class NoisyF : public VMCombinator {
 public:
     NoisyF() {
         std::cout << "F got created" << std::endl;
@@ -58,7 +63,7 @@ public:
     }
 };
 
-class NoisyO: public VMOpaque {
+class NoisyO : public VMOpaque {
 public:
     NoisyO() {
         std::cout << "O got created" << std::endl;
@@ -167,12 +172,12 @@ class Test02 : public Test {
                 }
             }
             std::cout << std::endl;
-         } else {
+        } else {
             error("not an array");
-         }
-     }
+        }
+    }
 
-     void test() override {
+    void test() override {
         for (int size = 0; size < 10; size++) {
             auto a = make_array(size);
             print_array(a);
@@ -181,8 +186,7 @@ class Test02 : public Test {
         auto a = make_array(1000);
         print_array(a);
         vm_object_dec(a);
-        
-     }
+    }
 };
 
 class Test03 : public Test {
@@ -197,7 +201,8 @@ public:
 
     void up_down(int n, vm_object_t* o) {
         std::cout << n << " launched " << std::endl;
-        while (!Test03::start);
+        while (!Test03::start)
+            ;
         std::cout << n << " counting up" << std::endl;
         for (int n = 0; n < COUNT; n++) {
             vm_object_inc(o);
@@ -237,7 +242,7 @@ public:
 
     static constexpr auto MIN_DEPTH = 4;
     static constexpr auto MAX_DEPTH = 21;
-    static constexpr auto STRETCH_DEPTH = MAX_DEPTH+1;
+    static constexpr auto STRETCH_DEPTH = MAX_DEPTH + 1;
 
     vm_object_t* make_node(vm_object_t* l, vm_object_t* r) {
         auto t = vm_array_create(2);
@@ -250,7 +255,7 @@ public:
         if (n == 0) {
             return nullptr;
         } else {
-            return make_node(make_tree(n-1), make_tree(n-1));
+            return make_node(make_tree(n - 1), make_tree(n - 1));
         }
     }
 
@@ -274,36 +279,37 @@ public:
         vm_object_dec(t);
     }
 
-    int run_parallel(unsigned depth, int iterations, unsigned int workers = std::thread::hardware_concurrency())
-    {
-    std::vector<std::thread> threads;
-    threads.reserve(workers);
+    int run_parallel(
+        unsigned depth, int iterations,
+        unsigned int workers = std::thread::hardware_concurrency()) {
+        std::vector<std::thread> threads;
+        threads.reserve(workers);
 
-    std::atomic_int counter = iterations;
-    std::atomic_int output = 0;
+        std::atomic_int counter = iterations;
+        std::atomic_int output = 0;
 
-    auto me = this;
+        auto me = this;
 
-    for(unsigned i = 0; i < workers; ++i) {
-        threads.push_back(std::thread([&counter, depth, &output, me] {
-            int checksum = 0;
+        for (unsigned i = 0; i < workers; ++i) {
+            threads.push_back(std::thread([&counter, depth, &output, me] {
+                int checksum = 0;
 
-            while(--counter >= 0) {
-                auto t     = me->make_tree(depth);
-                checksum    += me->check(t);
-                vm_object_dec(t);
-            }
+                while (--counter >= 0) {
+                    auto t = me->make_tree(depth);
+                    checksum += me->check(t);
+                    vm_object_dec(t);
+                }
 
-            output += checksum;
-        }));
+                output += checksum;
+            }));
+        }
+
+        for (unsigned i = 0; i < workers; ++i) {
+            threads[i].join();
+        }
+
+        return output;
     }
-
-    for(unsigned i = 0; i < workers; ++i) {
-        threads[i].join();
-    }
-
-    return output;
-}
 
     void test() override {
         test_stretch();
@@ -313,17 +319,16 @@ public:
             const int iterations = 1 << (MAX_DEPTH - d + MIN_DEPTH);
             auto const c = run_parallel(d, iterations);
 
-            std::cout << iterations << "\t trees of depth " << d << "\t check: " << c << "\n";
+            std::cout << iterations << "\t trees of depth " << d
+                      << "\t check: " << c << "\n";
         }
 
         std::cout << "long lived tree of depth " << MAX_DEPTH << "\t "
-              << "check: " << check(long_tree) << "\n";
-
+                  << "check: " << check(long_tree) << "\n";
     }
 };
 
-
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     Test00().runtest();
     Test01().runtest();
     Test02().runtest();
