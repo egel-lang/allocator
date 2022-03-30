@@ -174,8 +174,54 @@ class Test02 : public Test {
      }
 };
 
+class Test03 : public Test {
+public:
+    icu::UnicodeString title() override {
+        return "concurrent reference count";
+    };
+
+    const int COUNT = 100000;
+
+    static volatile bool start;
+
+    void up_down(int n, vm_object_t* o) {
+        std::cout << n << " launched " << std::endl;
+        while (!Test03::start);
+        std::cout << n << " counting up" << std::endl;
+        for (int n = 0; n < COUNT; n++) {
+            vm_object_inc(o);
+        }
+        std::cout << n << " refcount " << vm_object_rc(o) << std::endl;
+        for (int n = 0; n < COUNT; n++) {
+            vm_object_dec(o);
+        }
+        std::cout << n << " refcount " << vm_object_rc(o) << std::endl;
+        std::cout << n << " done counting" << std::endl;
+    }
+
+    const int THREADS = 10;
+
+    void test() override {
+        Test03::start = false;
+        auto o = vm_integer_create(42);
+        std::thread tt[THREADS];
+        for (int n = 0; n < THREADS; n++) {
+            tt[n] = std::thread(&Test03::up_down, this, n, o);
+        }
+        Test03::start = true;
+        for (int n = 0; n < THREADS; n++) {
+            tt[n].join();
+        }
+        std::cout << "final refcount " << vm_object_rc(o) << std::endl;
+        vm_object_dec(o);
+    }
+};
+
+volatile bool Test03::start;
+
 int main(int argc, char *argv[]) {
     Test00().runtest();
     Test01().runtest();
     Test02().runtest();
+    Test03().runtest();
 };
