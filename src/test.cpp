@@ -2,6 +2,7 @@
 
 #include <thread>
 #include <vector>
+#include <chrono>
 
 class Test {
 public:
@@ -12,6 +13,15 @@ public:
         std::cout << "## " << title() << " ##" << std::endl;
         test();
     };
+
+    virtual void timedtest() {
+        std::cout << "## " << title() << " ##" << std::endl;
+        auto start = std::chrono::system_clock::now();
+        test();
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        std::cout << "time passed " << diff.count() << " s\n";
+    }
 
     virtual void error(const icu::UnicodeString& e) {
         std::cout << "error: " << e << std::endl;
@@ -318,5 +328,5 @@ int main(int argc, char *argv[]) {
     Test01().runtest();
     Test02().runtest();
     Test03().runtest();
-    Test04().runtest();
+    Test04().timedtest();
 };
