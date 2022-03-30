@@ -1,3 +1,3 @@
 # An Egel allocator
 
-Mock-up backend Egel allocator based on mimalloc.
+Mockup backend Egel allocator based on mimalloc.

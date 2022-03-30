@@ -237,6 +237,33 @@ volatile bool Test03::start;
 class Test04 : public Test {
 public:
     icu::UnicodeString title() override {
+        return "noisy list";
+    };
+
+    vm_object_t* make_list(int n) {
+        if (n == 0) {
+            return vm_opaque_create(new NoisyO());
+        } else {
+            auto cons = vm_array_create(2);
+            auto el = vm_opaque_create(new NoisyO());
+            auto tail = make_list(n-1);
+            vm_array_set(cons, 0, el);
+            vm_array_set(cons, 1, tail);
+            return cons;
+        }
+    }
+
+    void test() override {
+        std::cout << "make list of 5 elements and nil" << std::endl;
+        auto l = make_list(5);
+        std::cout << "decref list" << std::endl;
+        vm_object_dec(l);
+    }
+};
+
+class Test05 : public Test {
+public:
+    icu::UnicodeString title() override {
         return "binary trees";
     };
 
@@ -333,5 +360,6 @@ int main(int argc, char* argv[]) {
     Test01().runtest();
     Test02().runtest();
     Test03().runtest();
-    Test04().timedtest();
+    Test04().runtest();
+    Test05().timedtest();
 };
